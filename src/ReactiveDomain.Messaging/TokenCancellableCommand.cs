@@ -10,9 +10,6 @@ namespace ReactiveDomain.Messaging
     /// </summary>
     public abstract class TokenCancellableCommand:Command
     {
-        private static readonly int TypeId = Interlocked.Increment(ref NextMsgId);
-        public override int MsgTypeId => TypeId;
-
         public readonly CancellationToken CancellationToken;
         public bool IsCanceled => CancellationToken.IsCancellationRequested;
 
@@ -36,8 +33,6 @@ namespace ReactiveDomain.Messaging
     }
     public class Canceled : Fail
     {
-        private static readonly int TypeId = Interlocked.Increment(ref NextMsgId);
-        public override int MsgTypeId => TypeId;
         public Canceled(Command sourceCommand) : base(sourceCommand,new CommandCanceledException(sourceCommand)) { }
     }
 }

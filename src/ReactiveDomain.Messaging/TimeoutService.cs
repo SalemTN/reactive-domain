@@ -8,9 +8,6 @@ namespace ReactiveDomain.Messaging
 {
     public class TimeoutMessage : DomainEvent
     {
-        private static readonly int TypeId = Interlocked.Increment(ref NextMsgId);
-        public override int MsgTypeId => TypeId;
-
         public Guid TargetId { get; private set; }
 
         /// <summary>

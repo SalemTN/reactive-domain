@@ -7,8 +7,6 @@ namespace ReactiveDomain.Testing
 {
     public class TestWoftamAggregateCreated: Message, ICorrelatedMessage
     {
-        private static readonly int TypeId = Interlocked.Increment(ref NextMsgId);
-        public override int MsgTypeId => TypeId;
         public TestWoftamAggregateCreated(Guid aggregateId)
         {
             AggregateId = aggregateId;

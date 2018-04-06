@@ -240,8 +240,6 @@ namespace ReactiveDomain.Testing.EventStore {
 
         public class EventWritten : Message
         {
-            private static readonly int TypeId = Interlocked.Increment(ref NextMsgId);
-            public override int MsgTypeId => TypeId;
             public readonly RecordedEvent Event;
             public EventWritten(
                 RecordedEvent @event) {
@@ -250,8 +248,6 @@ namespace ReactiveDomain.Testing.EventStore {
         }
         public class ProjectedEventWritten : Message
         {
-            private static readonly int TypeId = Interlocked.Increment(ref NextMsgId);
-            public override int MsgTypeId => TypeId;
             public readonly ProjectedEvent Event;
             public ProjectedEventWritten(
                 ProjectedEvent @event) {

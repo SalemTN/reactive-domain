@@ -6,8 +6,6 @@ namespace ReactiveDomain.Messaging
 {
     public class Command : Message, ICorrelatedMessage
     {
-        private static readonly int TypeId = Interlocked.Increment(ref NextMsgId);
-        public override int MsgTypeId => TypeId;
         public Guid? SourceId { get; }
         public Guid CorrelationId { get; }
 
@@ -35,8 +33,6 @@ namespace ReactiveDomain.Messaging
     /// </summary>
     public class AckCommand : Message, ICorrelatedMessage
     {
-        private static readonly int TypeId = Interlocked.Increment(ref NextMsgId);
-        public override int MsgTypeId => TypeId;
         public Command SourceCommand { get; }
         public Guid? SourceId => SourceCommand.MsgId;
         public Guid CorrelationId => SourceCommand.CorrelationId;

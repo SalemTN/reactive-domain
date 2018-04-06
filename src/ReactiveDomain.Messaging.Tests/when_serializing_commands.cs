@@ -46,7 +46,7 @@ namespace ReactiveDomain.Messaging.Tests
             }
 
             Assert.Equal(nearSide.MsgId, farSide.MsgId);
-            Assert.Equal(nearSide.MsgTypeId, farSide.MsgTypeId);
+            Assert.Equal(nearSide.GetType(), farSide.GetType());
             Assert.Equal(nearSide.CorrelationId, farSide.CorrelationId);
             Assert.Equal(nearSide.CommandType, farSide.CommandType);
             Assert.Equal(nearSide.CommandId, farSide.CommandId);
@@ -82,7 +82,7 @@ namespace ReactiveDomain.Messaging.Tests
             }
 
             Assert.Equal(nearSide.MsgId, farSide.MsgId);
-            Assert.Equal(nearSide.MsgTypeId, farSide.MsgTypeId);
+            Assert.Equal(nearSide.GetType(), farSide.GetType());
             Assert.Equal(nearSide.CorrelationId, farSide.CorrelationId);
             Assert.Equal(nearSide.CommandType, farSide.CommandType);
             Assert.Equal(nearSide.CommandId, farSide.CommandId);
@@ -123,7 +123,7 @@ namespace ReactiveDomain.Messaging.Tests
             }
 
             Assert.Equal(nearSide.MsgId, farSide.MsgId);
-            Assert.Equal(nearSide.MsgTypeId, farSide.MsgTypeId);
+            Assert.Equal(nearSide.GetType(), farSide.GetType());
             Assert.Equal(nearSide.CorrelationId, farSide.CorrelationId);
             Assert.Equal(nearSide.CommandType, farSide.CommandType);
             Assert.Equal(nearSide.CommandId, farSide.CommandId);
@@ -160,7 +160,7 @@ namespace ReactiveDomain.Messaging.Tests
             }
 
             Assert.Equal(nearSide.MsgId, farSide.MsgId);
-            Assert.Equal(nearSide.MsgTypeId, farSide.MsgTypeId);
+            Assert.Equal(nearSide.GetType(), farSide.GetType());
             Assert.Equal(nearSide.CorrelationId, farSide.CorrelationId);
             Assert.Equal(nearSide.CommandType, farSide.CommandType);
             Assert.Equal(nearSide.CommandId, farSide.CommandId);

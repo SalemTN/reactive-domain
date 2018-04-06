@@ -12,8 +12,6 @@ namespace ReactiveDomain.Testing
     {
         public class NewAggregate : Message, ICorrelatedMessage
         {
-            private static readonly int TypeId = Interlocked.Increment(ref NextMsgId);
-            public override int MsgTypeId => TypeId;
             public readonly Guid AggregateId;
             public NewAggregate(Guid aggregateId)
             {
@@ -26,8 +24,6 @@ namespace ReactiveDomain.Testing
         }
         public class Increment : Message, ICorrelatedMessage
         {
-            private static readonly int TypeId = Interlocked.Increment(ref NextMsgId);
-            public override int MsgTypeId => TypeId;
             public readonly Guid AggregateId;
             public readonly uint Amount;
             public Increment(Guid aggregateId, uint amount)

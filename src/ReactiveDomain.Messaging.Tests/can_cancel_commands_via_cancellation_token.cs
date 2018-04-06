@@ -265,9 +265,6 @@ namespace ReactiveDomain.Messaging.Tests {
         }
     }
     public class TestTokenCancellableCmd : TokenCancellableCommand {
-        private static readonly int TypeId = Interlocked.Increment(ref NextMsgId);
-        public override int MsgTypeId => TypeId;
-
         public readonly bool RequestFail;
         public TestTokenCancellableCmd(
             bool requestFail,
@@ -280,9 +277,6 @@ namespace ReactiveDomain.Messaging.Tests {
 
     }
     public class TestTokenCancellableLongRunningCmd : TokenCancellableCommand {
-        private static readonly int TypeId = Interlocked.Increment(ref NextMsgId);
-        public override int MsgTypeId => TypeId;
-
         public readonly bool RequestFail;
         public TestTokenCancellableLongRunningCmd(
             bool requestFail,
@@ -295,9 +289,6 @@ namespace ReactiveDomain.Messaging.Tests {
 
     }
     public class NestedTestTokenCancellableCmd : TokenCancellableCommand {
-        private static readonly int TypeId = Interlocked.Increment(ref NextMsgId);
-        public override int MsgTypeId => TypeId;
-
         public NestedTestTokenCancellableCmd(
             Guid correlationId,
             Guid? sourceId,
