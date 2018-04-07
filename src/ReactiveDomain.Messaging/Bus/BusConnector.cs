@@ -11,6 +11,7 @@ namespace ReactiveDomain.Messaging.Bus
     {
         private readonly BusAdapter _left;
         private readonly BusAdapter _right;
+
         public BusConnector(IDispatcher left, IDispatcher right)
         {
             _left = new BusAdapter(left);
@@ -36,6 +37,8 @@ namespace ReactiveDomain.Messaging.Bus
         private object _handler;
         private readonly HashSet<Guid> _trackedMessages;
 
+        private static readonly object LockObject = new object();
+
         public BusAdapter(IDispatcher bus)
         {
             _idTracker = null;
@@ -45,8 +48,12 @@ namespace ReactiveDomain.Messaging.Bus
 
         public void Handle(Message message)
         {
-            if (_trackedMessages.Remove(message.MsgId))
-                return;
+            lock (LockObject)
+            {
+                if (_trackedMessages.Remove(message.MsgId))
+                    return;
+            }
+
             if (message is Command)
             {
                 _bus.TryFire((Command) message);
@@ -60,7 +67,13 @@ namespace ReactiveDomain.Messaging.Bus
             if (_idTracker != null) throw new ArgumentException("Cannot subscribe more than one tracked handler");
             if (typeof(T) != typeof(Message)) throw new ArgumentException("Only Message type subscriptions supported");
             _handler = handler;
-            _idTracker = new MessageIdTracker((IHandle<Message>)handler, (g) => _trackedMessages.Add(g));
+            lock (LockObject)
+            {
+                _idTracker = new MessageIdTracker(
+                                    (IHandle<Message>)handler,
+                                    (g) => _trackedMessages.Add(g));
+            }
+
             _bus.Subscribe<Message>(_idTracker);
             return new Disposer(() => { this?.Unsubscribe(handler); return Unit.Default; });
         }
@@ -72,7 +85,7 @@ namespace ReactiveDomain.Messaging.Bus
                 throw new ArgumentException("Handler is not current registered handler");
             _bus.Unsubscribe<Message>(_idTracker);
             _handler = null;
-            _idTracker = null;
+            lock (LockObject) _idTracker = null;
         }
 
         public bool HasSubscriberFor<T>(bool includeDerived = false) where T : Message

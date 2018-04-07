@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 using ReactiveDomain.Messaging.Bus;
 using ReactiveDomain.Messaging.Testing;
 using Xunit;
@@ -49,10 +50,7 @@ namespace ReactiveDomain.Messaging.Tests
         {
             StandardTimeout = TimeSpan.FromSeconds(0.2);
             Bus = new Dispatcher(nameof(TestCommandBusFixture), 3, false, StandardTimeout, StandardTimeout);
-            RemoteBus = new Dispatcher(nameof(TestCommandBusFixture), 3, false, StandardTimeout, StandardTimeout);
-            //todo: fix connector
-            //var conn = new BusConnector(Bus, RemoteBus);
-
+ 
             Bus.Subscribe<TestCommands.Command1>(this);
             Bus.Subscribe<TestCommands.Command2>(this);
             Bus.Subscribe<AckCommand>(this);
@@ -63,8 +61,8 @@ namespace ReactiveDomain.Messaging.Tests
             Bus.Subscribe<TestCommands.WrapException>(this);
             Bus.Subscribe<TestCommands.TypedResponse>(this);
             Bus.Subscribe<TestCommands.ChainedCaller>(this);
-            RemoteBus.Subscribe<TestCommands.RemoteHandled>(this);
             Bus.Subscribe<TestCommands.LongRunning>(this);
+
             //Deliberately not subscribed 
             //Bus.Subscribe<TestCommands.Command3>(this);
 
@@ -215,6 +213,7 @@ namespace ReactiveDomain.Messaging.Tests
         {
             _fixture = fixture;
         }
+
         [Fact]
         public void publish_publishes_command_as_message()
         {
@@ -223,6 +222,7 @@ namespace ReactiveDomain.Messaging.Tests
             _fixture.Bus.Publish(new TestCommands.Command1(Guid.NewGuid(), null));
             SpinWait.SpinUntil(() => Interlocked.Read(ref _fixture.GotTestCommand1) == 1, 250);
         }
+
         [Fact]
         public void fire_publishes_command_as_message()
         {
@@ -231,6 +231,16 @@ namespace ReactiveDomain.Messaging.Tests
             _fixture.Bus.Fire(new TestCommands.Command1(Guid.NewGuid(), null));
             SpinWait.SpinUntil(() => Interlocked.Read(ref _fixture.GotTestCommand1) == 1, 250);
         }
+
+        [Fact]
+        public void tryfire_publishes_command_as_message()
+        {
+            Assert.IsOrBecomesTrue(() => _fixture.Bus.Idle);
+            _fixture.ClearCounters();
+            _fixture.Bus.TryFire(new TestCommands.Command1(Guid.NewGuid(), null));
+            SpinWait.SpinUntil(() => Interlocked.Read(ref _fixture.GotTestCommand1) == 1, 250);
+        }
+
         [Fact]
         public void command_handler_acks_command_message()
         {
@@ -240,6 +250,7 @@ namespace ReactiveDomain.Messaging.Tests
             Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotTestCommand1) == 1);
             Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotAck) == 1);
         }
+
         [Fact]
         public void command_handler_responds_to_command_message()
         {
@@ -248,11 +259,15 @@ namespace ReactiveDomain.Messaging.Tests
 
             _fixture.Bus.Fire(new TestCommands.Command1(Guid.NewGuid(), null));
 
-            Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotMessage) == 3, null, "Expected 3 Messages");
+            Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotMessage) == 3, null,
+                $"Expected 3 Messages, got {Interlocked.Read(ref _fixture.GotMessage)} ");
             Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotAck) == 1, null, "Expected Ack");
-            Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotTestCommand1) == 1, null, "Expected Command was handled");
-            Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotCommandResponse) == 1, null, "Expected Response");
+            Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotTestCommand1) == 1, null,
+                "Expected Command was handled");
+            Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotCommandResponse) == 1, null,
+                "Expected Response");
         }
+
         [Fact]
         public void fire_passing_command_should_pass()
         {
@@ -261,8 +276,12 @@ namespace ReactiveDomain.Messaging.Tests
 
             _fixture.Bus.Fire(new TestCommands.Command1(Guid.NewGuid(), null));
 
-            Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotTestCommand1) == 1, null, "Expected Command was handled");
-            Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotCommandResponse) == 1, null, "Expected Response");
+            Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotTestCommand1) == 1, null,
+                "Expected Command was handled");
+            Assert.IsOrBecomesTrue(
+                () => Interlocked.Read(ref _fixture.GotCommandResponse) == 1, null,
+                $"Expected one Response, got {Interlocked.Read(ref _fixture.GotCommandResponse)}");
+
             Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotSuccess) == 1, null, "Expected Success");
             Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotFail) == 0, null, "Unexpected fail received.");
             Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotCanceled) == 0, null, "Unexpected Cancel received.");
@@ -511,56 +530,27 @@ namespace ReactiveDomain.Messaging.Tests
 
             Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotLongRunning) == 1, msg: "Expected Long Running to be handled");
         }
-        [Fact(Skip = "Distributed commands are currently disabled")]
-        public void passing_commands_on_connected_buses_should_pass()
+
+        [Fact]
+        public void oversubscription_of_commands_should_throw_existing()
         {
             Assert.IsOrBecomesTrue(() => _fixture.Bus.Idle);
             _fixture.ClearCounters();
 
-            _fixture.Bus.Fire(new TestCommands.RemoteHandled(Guid.NewGuid(), null));
+            Assert.Throws<ExistingHandlerException>(
+                () => _fixture.Bus.Subscribe(new AdHocCommandHandler<TestCommands.Command1>(
+                                                  cmd =>
+                                                  {
+                                                      Task.Delay(100).Wait();
+                                                      return true;
+                                                  })));
 
-            Assert.IsOrBecomesTrue(() => Interlocked.Read(ref _fixture.GotRemoteHandled) == 1, msg: "Expected RemoteHandled to be handled");
-        }
-        [Fact(Skip = "Connected bus scenarios currently disabled")]
-        public void fire_oversubscribed_commands_should_throw_oversubscribed()
-        {
-            Assert.IsOrBecomesTrue(() => _fixture.Bus.Idle);
-            _fixture.ClearCounters();
-            Assert.True(false);
-            //todo: rewrite this to use the new fixture once the bus connector is fixed
-            //var bus2 = new CommandBus("remote");
-            //// ReSharper disable once UnusedVariable
-            //var conn = new BusConnector(_bus, bus2);
-            //long processedCmd = 0;
-            //long gotAck = 0;
-            //_bus.Subscribe(new AdHocCommandHandler<TestCommands.Command1>(
-            //     cmd =>
-            //     {
-            //         Interlocked.Increment(ref processedCmd);
-            //         Task.Delay(1000).Wait();
-            //         return true;
-            //     }));
-            //bus2.Subscribe(new AdHocCommandHandler<TestCommands.Command1>(
-            //      cmd =>
-            //      {
-            //          Interlocked.Increment(ref processedCmd);
-            //          Task.Delay(100).Wait();
-            //          return true;
-            //      }));
-            //_bus.Subscribe(
-            //            new AdHocHandler<AckCommand>(cmd => Interlocked.Increment(ref gotAck)));
+            _fixture.Bus.Fire(new TestCommands.Command1(Guid.NewGuid(), null));
 
-            //Assert.Throws<CommandOversubscribedException>(() =>
-            //            _bus.Fire(new TestCommands.Command1(Guid.NewGuid(), null)));
-
-            //Assert.IsOrBecomesTrue(
-            //            () => Interlocked.Read(ref gotAck) == 2,
-            //            msg: "Expected command Acked twice, got " + gotAck);
-
-            //Assert.IsOrBecomesTrue(
-            //            () => Interlocked.Read(ref processedCmd) <= 1,
-            //            msg: "Expected command handled once or less, actual " + processedCmd);
-        }
+            Assert.IsOrBecomesTrue(
+                        () => Interlocked.Read(ref _fixture.GotTestCommand1) == 1,
+                        msg: "Expected command handled once, actual " + _fixture.GotTestCommand1);
+         }
 
         [Fact]
         public void commands_should_not_call_other_commands()
@@ -575,7 +565,7 @@ namespace ReactiveDomain.Messaging.Tests
             Assert.True(passed, "Expected false return");
             Assert.IsType(typeof(Success), response);
             Assert.True(Interlocked.Read(ref _fixture.GotChainedCaller) == 0);
-            Assert.True(Interlocked.Read(ref _fixture.GotTestCommand1) == 2);
+            Assert.True(Interlocked.Read(ref _fixture.GotTestCommand1) == 2, $"got {Interlocked.Read(ref _fixture.GotTestCommand1)} handled, expected 2");
             Assert.True(Interlocked.Read(ref _fixture.GotTestCommand2) == 0);
             Assert.True(Interlocked.Read(ref _fixture.GotRemoteHandled) == 0);
             Assert.True(Interlocked.Read(ref _fixture.GotLongRunning) == 0);
@@ -583,10 +573,10 @@ namespace ReactiveDomain.Messaging.Tests
             Assert.True(Interlocked.Read(ref _fixture.GotTestThrowCommand) == 0);
             Assert.True(Interlocked.Read(ref _fixture.GotTestWrapCommand) == 0);
             Assert.True(Interlocked.Read(ref _fixture.GotTypedResponse) == 0);
-            Assert.True(Interlocked.Read(ref _fixture.GotAck) == 2);
-            Assert.True(Interlocked.Read(ref _fixture.GotCommandResponse) == 2);
+            Assert.True(Interlocked.Read(ref _fixture.GotAck) == 2, $"got {Interlocked.Read(ref _fixture.GotAck)} acks, expected 2");
+            Assert.True(Interlocked.Read(ref _fixture.GotCommandResponse) == 2, $"got {Interlocked.Read(ref _fixture.GotCommandResponse)} responses, expected 2");
             Assert.True(Interlocked.Read(ref _fixture.GotFail) == 0);
-            Assert.True(Interlocked.Read(ref _fixture.GotSuccess) == 2);
+            Assert.True(Interlocked.Read(ref _fixture.GotSuccess) == 2, $"got {Interlocked.Read(ref _fixture.GotSuccess)} succdesses, expected 2");
             Assert.True(Interlocked.Read(ref _fixture.GotCanceled) == 0);
             Assert.True(Interlocked.Read(ref _fixture.ResponseData) == 0);
             Assert.True(Interlocked.Read(ref _fixture.GotMessage) == 6, $"Unexpected Number of events {Interlocked.Read(ref _fixture.GotMessage)}");
